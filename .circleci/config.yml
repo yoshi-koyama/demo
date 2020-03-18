@@ -1,42 +1,31 @@
-# Java Gradle CircleCI 2.0 configuration file
-#
-# Check https://circleci.com/docs/2.0/language-java/ for more details
-#
-version: 2
-jobs:
-  build:
-    docker:
-      # specify the version you desire here
-      - image: circleci/openjdk:8-jdk
+version: 2 # CircleCI 2.0 を使用します
+jobs: # ステップの集合
+  build: # Workflows を使用しない実行では、エントリポイントとして `build` ジョブが必要
 
-      # Specify service dependencies here if necessary
-      # CircleCI maintains a library of pre-built images
-      # documented at https://circleci.com/docs/2.0/circleci-images/
-      # - image: circleci/postgres:9.4
+    working_directory: ~/circleci-demo-java-spring # ステップが実行されるディレクトリ
 
-    working_directory: ~/repo
+    docker: # Docker でステップを実行します
 
-    environment:
-      # Customize the JVM maximum heap limit
-      JVM_OPTS: -Xmx3200m
-      TERM: dumb
+      - image: circleci/openjdk:8-jdk-browsers # このイメージをすべての `steps` が実行されるプライマリコンテナとして使用します
 
-    steps:
-      - checkout
+    steps: # 実行可能コマンドの集合
 
-      # Download and cache dependencies
-      - restore_cache:
-          keys:
-            - v1-dependencies-{{ checksum "build.gradle" }}
-            # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
+      - checkout # ソースコードを作業ディレクトリにチェックアウトします
 
-      - run: gradle dependencies
+      - restore_cache: # 初回実行後、または `pom.xml` が変更されている場合に、保存されているキャッシュを復元します
+          # 依存関係キャッシュについては https://circleci.com/docs/ja/2.0/caching/ をお読みください
+          key: circleci-demo-java-spring-{{ checksum "pom.xml" }}
 
-      - save_cache:
+      - run: mvn dependency:go-offline # プロジェクトの依存関係を取得します
+
+      - save_cache: # プロジェクトの依存関係を保存します
           paths:
-            - ~/.gradle
-          key: v1-dependencies-{{ checksum "build.gradle" }}
+            - ~/.m2
+          key: circleci-demo-java-spring-{{ checksum "pom.xml" }}
 
-      # run tests!
-      - run: gradle test
+      - run: mvn compile war:war # 実際のテストを実行します
+
+      - store_artifacts: # uberjar をアーティファクトとして保存します
+      # アーティファクト (https://circleci.com/docs/ja/2.0/artifacts/) に表示するテストサマリーをアップロードします
+          path: target/demo.war
+      # デプロイ例については https://circleci.com/docs/ja/2.0/deployment-integrations/ を参照してください
